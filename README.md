@@ -1,8 +1,8 @@
 # pocdynamo Project
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Projeto para estudo de de Quarkus e DynamoDB.
 
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
+Foi utilizado localstack para rodar o mesmo.
 
 ## Running the application in dev mode
 
@@ -11,51 +11,74 @@ You can run your application in dev mode that enables live coding using:
 ./mvnw compile quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
+## Preparado o localstack
 
-## Packaging and running the application
+OBS: É necessário ter o docker rodando o localstack.
 
-The application can be packaged using:
+### Rodando dentro do container localstack 
+1. Download [AWS Cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-version.html)
+2. Configure AWS Cli:
 ```shell script
-./mvnw package
+$ aws configure
 ```
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+- AWS Access Key ID: `xpto`
+- AWS Secret Access Key: `xpto`
+- Default region name: `sa-east-1`
+- Default output format: `json`
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
+### Configurando tabela:
 ```shell script
-./mvnw package -Dquarkus.package.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using: 
-```shell script
-./mvnw package -Pnative
+$ aws dynamodb create-table --endpoint-url http://127.0.0.1:4566 --region sa-east-1 --table-name acionamento_bem --no-verify-ssl --attribute-definitions AttributeName=codigo_solicitacao,AttributeType=S AttributeName=numero_operacao,AttributeType=S AttributeName=produto,AttributeType=S --key-schema AttributeName=codigo_solicitacao,KeyType=HASH AttributeName=numero_operacao,KeyType=RANGE --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 --global-secondary-indexes IndexName=gsi_busca_bens,KeySchema=[{AttributeName=numero_operacao,KeyType=HASH},{AttributeName=produto,KeyType=RANGE}],Projection={ProjectionType=ALL},ProvisionedThroughput={ReadCapacityUnits=5,WriteCapacityUnits=5} --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
+## Modelos de requisções:
+
+#### Post Criar Acionamento:
 ```shell script
-./mvnw package -Pnative -Dquarkus.native.container-build=true
+$ curl --request POST \
+  --url http://localhost:8080/acionamento \
+  --header 'Content-Type: application/json' \
+  --data '{
+	"numeroOperacao" : "51289",
+	"codigoProduto" : 22,
+	"statusSolicitacao" : "Aberto",
+	"codigoOperacao" : 2022
+}'
+```
+#### Put Atualizar acionamento:
+```shell script
+curl --request PUT \
+  --url http://localhost:8080/acionamento \
+  --header 'Content-Type: application/json' \
+  --data '{
+	"codigoSolicitacao": "30dffb45-fe47-4c55-bf6f-5cdbfa1a516f",
+	"numeroOperacao" : "51289",
+	"codigoProduto" : 22,
+	"statusSolicitacao" : "Aberto",
+	"codigoOperacao" : 3333
+}'
+```
+#### Deletar acionamento:
+```shell script
+curl --request DELETE \
+  --url http://localhost:8080/acionamento/{codigoDaSolicitacao}/{codigoProduto}
+```
+#### Listar todos os acionamento ("Full scan"):
+```shell script
+curl --request GET \
+  --url http://localhost:8080/acionamento
 ```
 
-You can then execute your native executable with: `./target/pocdynamo-1.0.0-SNAPSHOT-runner`
+#### Buscar acionamento 
+```shell script
+curl --request GET \
+  --url http://localhost:8080/acionamento/{codigoDaSolicitacao}/{codigoProduto}
+```
 
-If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.
+#### Buscar acionamento por PK e SK (QUERY SCAN):
+```shell script
+curl --request GET \
+curl --request GET \
+  --url 'http://localhost:8080/acionamento?id=codigoDaSolicitacao&partNumOpe={numeroDaOperacaoParcial}'
+```
 
-## Related Guides
-
-- RESTEasy Classic ([guide](https://quarkus.io/guides/resteasy)): REST endpoint framework implementing JAX-RS and more
-
-## Provided Code
-
-### RESTEasy JAX-RS
-
-Easily start your RESTful Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started#the-jax-rs-resources)
-# pocdynamo-quarkus
